@@ -101,6 +101,17 @@ export default function QuizGenerator() {
       return;
     }
 
+    try {
+      const parsed = new URL(webhookUrl.trim());
+      if (parsed.protocol !== "https:") {
+        setError("La URL del webhook debe usar HTTPS para proteger tu contenido.");
+        return;
+      }
+    } catch {
+      setError("La URL del webhook no es válida.");
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setSelectedAnswers({});
