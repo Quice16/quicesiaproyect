@@ -29,14 +29,16 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "generador de quices" },
+      { name: "description", content: "Quiz Mastermind generates multiple-choice quizzes from provided text content." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "generador de quices" },
+      { property: "og:description", content: "Quiz Mastermind generates multiple-choice quizzes from provided text content." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "generador de quices" },
+      { name: "twitter:description", content: "Quiz Mastermind generates multiple-choice quizzes from provided text content." },
     ],
     links: [
       {
