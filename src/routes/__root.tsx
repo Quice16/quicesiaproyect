@@ -29,16 +29,15 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "generador de quices" },
-      { name: "description", content: "Quiz Mastermind generates multiple-choice quizzes from provided text content." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "generador de quices" },
-      { property: "og:description", content: "Quiz Mastermind generates multiple-choice quizzes from provided text content." },
+      { title: "QuizUQGenerator — Universidad del Quindío" },
+      { name: "description", content: "Generador de quizzes con IA para fines académicos — Universidad del Quindío." },
+      { name: "author", content: "Ing. Andrés Felipe Quiceno y Juan Diego Jaramillo" },
+      { property: "og:title", content: "QuizUQGenerator — Universidad del Quindío" },
+      { property: "og:description", content: "Generador de quizzes con IA para fines académicos — Universidad del Quindío." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "generador de quices" },
-      { name: "twitter:description", content: "Quiz Mastermind generates multiple-choice quizzes from provided text content." },
+      { name: "twitter:title", content: "QuizUQGenerator — Universidad del Quindío" },
+      { name: "twitter:description", content: "Generador de quizzes con IA para fines académicos — Universidad del Quindío." },
     ],
     links: [
       {
