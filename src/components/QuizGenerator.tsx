@@ -13,7 +13,7 @@ interface QuizQuestion {
   explanation: string;
 }
 
-type Provider = "openai" | "anthropic";
+type Provider = "local" | "openai" | "anthropic" | "deepseek" | "gemini" | "mistral";
 
 const STORAGE_KEY = "quiz_ai_config_v1";
 
