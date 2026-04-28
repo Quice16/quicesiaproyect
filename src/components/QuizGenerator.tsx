@@ -673,7 +673,7 @@ export default function QuizGenerator() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleGenerate}
-              disabled={!text.trim() || !apiKey.trim() || isGenerating}
+              disabled={!text.trim() || (currentProvider.needsKey && !apiKey.trim()) || isGenerating}
               className="w-full sm:w-auto px-8 py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               {isGenerating ? (
