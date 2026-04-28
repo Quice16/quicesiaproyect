@@ -15,25 +15,102 @@ export const Route = createFileRoute("/")({
   }),
 });
 
+const STARS = [
+  { top: "8%", left: "12%", size: 2, delay: "0s" },
+  { top: "15%", left: "78%", size: 3, delay: "1.2s" },
+  { top: "22%", left: "45%", size: 1.5, delay: "2.4s" },
+  { top: "32%", left: "88%", size: 2, delay: "0.6s" },
+  { top: "42%", left: "8%", size: 2.5, delay: "1.8s" },
+  { top: "55%", left: "62%", size: 1.5, delay: "3s" },
+  { top: "62%", left: "30%", size: 2, delay: "0.3s" },
+  { top: "70%", left: "92%", size: 3, delay: "2.1s" },
+  { top: "78%", left: "18%", size: 2, delay: "1.5s" },
+  { top: "85%", left: "70%", size: 1.5, delay: "0.9s" },
+  { top: "12%", left: "55%", size: 1.5, delay: "2.7s" },
+  { top: "48%", left: "38%", size: 2, delay: "1s" },
+  { top: "90%", left: "48%", size: 2, delay: "2.3s" },
+  { top: "5%", left: "92%", size: 1.5, delay: "1.7s" },
+  { top: "38%", left: "72%", size: 2.5, delay: "0.4s" },
+];
+
 function Index() {
   return (
     <div className="relative min-h-screen bg-background antialiased overflow-hidden">
-      {/* Marca de agua diagonal repetida */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-0 select-none opacity-[0.05]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(-30deg, transparent 0 120px, rgba(0,0,0,0.001) 120px 121px)",
-        }}
-      >
-        <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-x-16 gap-y-24 -rotate-[30deg] scale-150 text-primary font-bold text-base whitespace-nowrap">
-          {Array.from({ length: 60 }).map((_, i) => (
-            <span key={i}>
-              Diseñado por Ing. Andrés Felipe Quiceno y Juan Diego Jaramillo · Universidad del Quindío · Para fines Académicos
-            </span>
+      {/* Fondo astro/educativo: gradiente + nebulosas + grilla + estrellas */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
+        {/* Gradientes base */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 60% at 20% 0%, color-mix(in oklab, var(--primary) 18%, transparent), transparent 60%), radial-gradient(ellipse 70% 50% at 100% 100%, color-mix(in oklab, var(--accent) 14%, transparent), transparent 60%), linear-gradient(180deg, var(--background) 0%, color-mix(in oklab, var(--primary) 4%, var(--background)) 100%)",
+          }}
+        />
+
+        {/* Grilla académica con máscara radial */}
+        <div
+          className="absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            color: "var(--primary)",
+            maskImage:
+              "radial-gradient(ellipse 80% 70% at 50% 30%, black 40%, transparent 90%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 80% 70% at 50% 30%, black 40%, transparent 90%)",
+          }}
+        />
+
+        {/* Nebulosas suaves */}
+        <div
+          className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full blur-3xl opacity-30"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in oklab, var(--primary) 60%, transparent), transparent 70%)",
+          }}
+        />
+        <div
+          className="absolute bottom-0 right-0 w-[600px] h-[600px] rounded-full blur-3xl opacity-25"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in oklab, var(--accent) 55%, transparent), transparent 70%)",
+          }}
+        />
+
+        {/* Estrellas titilantes */}
+        <div className="absolute inset-0">
+          {STARS.map((s, i) => (
+            <span
+              key={i}
+              className="absolute rounded-full bg-primary"
+              style={{
+                top: s.top,
+                left: s.left,
+                width: `${s.size}px`,
+                height: `${s.size}px`,
+                opacity: 0.5,
+                boxShadow: "0 0 8px currentColor",
+                animation: `twinkle 4s ease-in-out ${s.delay} infinite`,
+              }}
+            />
           ))}
         </div>
+
+        <style>{`
+          @keyframes twinkle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 0.9; transform: scale(1.2); }
+          }
+        `}</style>
+      </div>
+
+      {/* Marca de agua discreta en esquina */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed bottom-3 right-4 z-10 text-[10px] text-muted-foreground/70 font-medium tracking-wide select-none hidden sm:block"
+      >
+        UQ · Para fines Académicos
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
