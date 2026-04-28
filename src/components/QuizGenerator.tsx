@@ -492,6 +492,56 @@ export default function QuizGenerator() {
                 </span>
               </div>
             )}
+
+            {/* Desglose por pregunta */}
+            {questions.length > 0 && Object.keys(selectedAnswers).length > 0 && (
+              <div className="pt-4 border-t border-border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  Desglose por pregunta
+                </p>
+                <div className="grid grid-cols-5 gap-2">
+                  {questions.map((q, i) => {
+                    const answered = selectedAnswers[i] !== undefined;
+                    const correct = answered && selectedAnswers[i] === q.correctAnswer;
+                    let cls =
+                      "aspect-square rounded-lg flex items-center justify-center text-xs font-bold border transition-all duration-200 ";
+                    if (!answered) {
+                      cls += "bg-muted text-muted-foreground border-border";
+                    } else if (correct) {
+                      cls += "bg-success/15 text-success border-success/40";
+                    } else {
+                      cls += "bg-destructive/15 text-destructive border-destructive/40";
+                    }
+                    return (
+                      <div
+                        key={i}
+                        className={cls}
+                        title={
+                          !answered
+                            ? `Pregunta ${i + 1}: sin responder`
+                            : correct
+                              ? `Pregunta ${i + 1}: correcta`
+                              : `Pregunta ${i + 1}: incorrecta (correcta: ${q.correctAnswer})`
+                        }
+                      >
+                        {answered ? (correct ? "✓" : "✗") : i + 1}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between gap-2 mt-3 text-xs">
+                  <span className="flex items-center gap-1.5 text-success font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-success" />
+                    Correctas: {score}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-destructive font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-destructive" />
+                    Incorrectas: {Object.keys(selectedAnswers).length - score}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {allAnswered && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -499,7 +549,7 @@ export default function QuizGenerator() {
                 className="pt-4 border-t border-border"
               >
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground text-sm font-medium">Puntuación</span>
+                  <span className="text-muted-foreground text-sm font-medium">Puntuación final</span>
                   <span className="text-2xl font-bold text-accent tabular-nums">
                     {score}/{questions.length}
                   </span>
