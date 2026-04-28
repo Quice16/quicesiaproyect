@@ -512,7 +512,7 @@ export default function QuizGenerator() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
-              Configuración de IA
+              Configuración del modelo
             </button>
 
             <AnimatePresence>
