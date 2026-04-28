@@ -351,15 +351,15 @@ export default function QuizGenerator() {
 
   const handleGenerate = async () => {
     if (!text.trim()) {
-      setError("Pega un texto para generar el quiz.");
+      setError("Pega un texto o palabra clave para generar el quiz.");
       return;
     }
-    if (!apiKey.trim()) {
-      setError("Ingresa tu API key del proveedor de IA.");
+    if (provider !== "local" && !apiKey.trim()) {
+      setError("Ingresa tu API key del proveedor seleccionado o usa el modo 'Sin IA'.");
       return;
     }
 
-    // Validación básica de formato
+    // Validación básica de formato (solo IA en línea)
     if (provider === "openai" && !apiKey.startsWith("sk-")) {
       setError("La API key de OpenAI debe empezar con 'sk-'.");
       return;
@@ -377,24 +377,43 @@ export default function QuizGenerator() {
 
     try {
       const prompt = buildPrompt(text, difficulty, numQuestions);
-      const generated =
-        provider === "openai"
-          ? await callOpenAI(apiKey.trim(), prompt)
-          : await callAnthropic(apiKey.trim(), prompt);
+      const key = apiKey.trim();
+      let generated: QuizQuestion[] = [];
+
+      switch (provider) {
+        case "local":
+          generated = generateLocalQuiz(text, difficulty, numQuestions);
+          break;
+        case "openai":
+          generated = await callOpenAI(key, prompt);
+          break;
+        case "anthropic":
+          generated = await callAnthropic(key, prompt);
+          break;
+        case "deepseek":
+          generated = await callDeepSeek(key, prompt);
+          break;
+        case "gemini":
+          generated = await callGemini(key, prompt);
+          break;
+        case "mistral":
+          generated = await callMistral(key, prompt);
+          break;
+      }
 
       if (!Array.isArray(generated) || generated.length === 0) {
-        throw new Error("La IA no devolvió preguntas válidas. Intenta con un texto más largo.");
+        throw new Error("No se generaron preguntas válidas. Intenta con un texto más largo.");
       }
 
       setQuestions(generated);
       setShowConfig(false);
-      persistConfig(apiKey.trim(), provider, rememberKey);
+      if (provider !== "local") persistConfig(key, provider, rememberKey);
     } catch (err) {
       console.error("Error generando quiz:", err);
       setError(
         err instanceof Error
           ? err.message
-          : "Error desconocido al conectar con la IA. Verifica tu API key."
+          : "Error desconocido al generar el quiz. Verifica tu API key o el texto."
       );
     } finally {
       setIsGenerating(false);
@@ -418,18 +437,55 @@ export default function QuizGenerator() {
     hard: "Difícil",
   };
 
-  const providerInfo: Record<Provider, { name: string; url: string; placeholder: string }> = {
+  const providerInfo: Record<
+    Provider,
+    { name: string; short: string; url: string; placeholder: string; needsKey: boolean }
+  > = {
+    local: {
+      name: "Sin IA · Modo local (gratis)",
+      short: "Sin IA (local)",
+      url: "",
+      placeholder: "",
+      needsKey: false,
+    },
     openai: {
-      name: "OpenAI (GPT-4o mini)",
+      name: "OpenAI · GPT-4o mini",
+      short: "OpenAI",
       url: "https://platform.openai.com/api-keys",
       placeholder: "sk-...",
+      needsKey: true,
     },
     anthropic: {
-      name: "Anthropic (Claude 3.5 Haiku)",
+      name: "Anthropic · Claude 3.5 Haiku",
+      short: "Claude",
       url: "https://console.anthropic.com/settings/keys",
       placeholder: "sk-ant-...",
+      needsKey: true,
+    },
+    deepseek: {
+      name: "DeepSeek · deepseek-chat",
+      short: "DeepSeek",
+      url: "https://platform.deepseek.com/api_keys",
+      placeholder: "sk-...",
+      needsKey: true,
+    },
+    gemini: {
+      name: "Google · Gemini 2.0 Flash",
+      short: "Gemini",
+      url: "https://aistudio.google.com/app/apikey",
+      placeholder: "AIza...",
+      needsKey: true,
+    },
+    mistral: {
+      name: "Mistral · mistral-small",
+      short: "Mistral",
+      url: "https://console.mistral.ai/api-keys/",
+      placeholder: "...",
+      needsKey: true,
     },
   };
+
+  const currentProvider = providerInfo[provider];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
