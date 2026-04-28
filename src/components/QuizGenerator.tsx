@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface QuizOption {
@@ -13,80 +13,124 @@ interface QuizQuestion {
   explanation: string;
 }
 
-async function fetchQuestionsFromN8n(
-  webhookUrl: string,
-  text: string,
-  difficulty: string,
-  numQuestions: number
-): Promise<QuizQuestion[]> {
-  const response = await fetch(webhookUrl, {
+type Provider = "openai" | "anthropic";
+
+const STORAGE_KEY = "quiz_ai_config_v1";
+
+const difficultyDescriptions: Record<string, string> = {
+  easy: "preguntas básicas de comprensión y memorización",
+  medium: "preguntas de aplicación y análisis de conceptos",
+  hard: "preguntas de evaluación crítica, inferencia y casos complejos",
+};
+
+function buildPrompt(text: string, difficulty: string, numQuestions: number) {
+  return `Eres un generador experto de exámenes educativos. A partir del siguiente texto, crea EXACTAMENTE ${numQuestions} preguntas de opción múltiple en español, de dificultad ${difficulty} (${difficultyDescriptions[difficulty]}).
+
+Cada pregunta debe tener 4 opciones (A, B, C, D), una sola respuesta correcta, y una explicación breve.
+
+Responde ÚNICAMENTE con un JSON válido (sin markdown, sin texto adicional) con esta estructura exacta:
+{
+  "questions": [
+    {
+      "question": "texto de la pregunta",
+      "options": [
+        {"label": "A", "text": "opción A"},
+        {"label": "B", "text": "opción B"},
+        {"label": "C", "text": "opción C"},
+        {"label": "D", "text": "opción D"}
+      ],
+      "correctAnswer": "A",
+      "explanation": "por qué esta es la respuesta correcta"
+    }
+  ]
+}
+
+TEXTO:
+"""
+${text}
+"""`;
+}
+
+function extractJson(raw: string): { questions: QuizQuestion[] } {
+  const cleaned = raw
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end !== -1) {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    }
+    throw new Error("No se pudo interpretar la respuesta de la IA como JSON.");
+  }
+}
+
+async function callOpenAI(apiKey: string, prompt: string): Promise<QuizQuestion[]> {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, difficulty, numQuestions }),
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "Devuelve solo JSON válido, sin markdown." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    }),
   });
 
   if (!response.ok) {
-    throw new Error(`Error del servidor: ${response.status}`);
+    const errText = await response.text();
+    throw new Error(`OpenAI ${response.status}: ${errText.slice(0, 200)}`);
   }
 
   const data = await response.json();
+  const content = data.choices?.[0]?.message?.content ?? "";
+  const parsed = extractJson(content);
+  return parsed.questions;
+}
 
-  // n8n puede devolver la respuesta en distintos formatos según configuración
-  // Intentamos parsear el JSON de la respuesta de IA
-  let questions: QuizQuestion[];
+async function callAnthropic(apiKey: string, prompt: string): Promise<QuizQuestion[]> {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
 
-  if (data.questions && Array.isArray(data.questions)) {
-    questions = data.questions;
-  } else if (typeof data === "string") {
-    const parsed = JSON.parse(data);
-    questions = parsed.questions;
-  } else if (data.output && typeof data.output === "string") {
-    // OpenAI node en n8n a veces devuelve { output: "..." }
-    const cleaned = data.output.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    questions = parsed.questions;
-  } else if (data.message?.content) {
-    const cleaned = data.message.content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    questions = parsed.questions;
-  } else if (Array.isArray(data)) {
-    // Si n8n devuelve un array directamente
-    if (data[0]?.questions) {
-      questions = data[0].questions;
-    } else if (data[0]?.output) {
-      const cleaned = data[0].output.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      questions = parsed.questions;
-    } else {
-      throw new Error("Formato de respuesta no reconocido");
-    }
-  } else {
-    // Último intento: buscar en todo el objeto
-    const raw = JSON.stringify(data);
-    const match = raw.match(/"questions"\s*:\s*\[/);
-    if (match) {
-      const startIdx = raw.indexOf(match[0]);
-      const sub = raw.slice(startIdx - 1);
-      const parsed = JSON.parse("{" + sub.slice(0, sub.lastIndexOf("]") + 2));
-      questions = parsed.questions;
-    } else {
-      throw new Error("No se encontraron preguntas en la respuesta. Revisa la configuración del nodo Respond to Webhook en n8n.");
-    }
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Claude ${response.status}: ${errText.slice(0, 200)}`);
   }
 
-  // Validar estructura mínima
-  if (!Array.isArray(questions) || questions.length === 0) {
-    throw new Error("La IA no generó preguntas válidas. Intenta con un texto más largo.");
-  }
-
-  return questions;
+  const data = await response.json();
+  const content = data.content?.[0]?.text ?? "";
+  const parsed = extractJson(content);
+  return parsed.questions;
 }
 
 export default function QuizGenerator() {
   const [text, setText] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
   const [numQuestions, setNumQuestions] = useState(5);
-  const [webhookUrl, setWebhookUrl] = useState("");
+  const [provider, setProvider] = useState<Provider>("openai");
+  const [apiKey, setApiKey] = useState("");
+  const [rememberKey, setRememberKey] = useState(false);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   const [showAnswers, setShowAnswers] = useState<Record<number, boolean>>({});
@@ -94,21 +138,50 @@ export default function QuizGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(true);
 
+  // Cargar configuración guardada (solo si el usuario eligió recordar)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.apiKey) setApiKey(parsed.apiKey);
+        if (parsed.provider) setProvider(parsed.provider);
+        setRememberKey(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const persistConfig = (key: string, prov: Provider, remember: boolean) => {
+    try {
+      if (remember && key) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ apiKey: key, provider: prov }));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!text.trim()) return;
-    if (!webhookUrl.trim()) {
-      setError("Ingresa la URL del webhook de n8n.");
+    if (!text.trim()) {
+      setError("Pega un texto para generar el quiz.");
+      return;
+    }
+    if (!apiKey.trim()) {
+      setError("Ingresa tu API key del proveedor de IA.");
       return;
     }
 
-    try {
-      const parsed = new URL(webhookUrl.trim());
-      if (parsed.protocol !== "https:") {
-        setError("La URL del webhook debe usar HTTPS para proteger tu contenido.");
-        return;
-      }
-    } catch {
-      setError("La URL del webhook no es válida.");
+    // Validación básica de formato
+    if (provider === "openai" && !apiKey.startsWith("sk-")) {
+      setError("La API key de OpenAI debe empezar con 'sk-'.");
+      return;
+    }
+    if (provider === "anthropic" && !apiKey.startsWith("sk-ant-")) {
+      setError("La API key de Claude debe empezar con 'sk-ant-'.");
       return;
     }
 
@@ -119,15 +192,25 @@ export default function QuizGenerator() {
     setQuestions([]);
 
     try {
-      const generated = await fetchQuestionsFromN8n(webhookUrl, text, difficulty, numQuestions);
+      const prompt = buildPrompt(text, difficulty, numQuestions);
+      const generated =
+        provider === "openai"
+          ? await callOpenAI(apiKey.trim(), prompt)
+          : await callAnthropic(apiKey.trim(), prompt);
+
+      if (!Array.isArray(generated) || generated.length === 0) {
+        throw new Error("La IA no devolvió preguntas válidas. Intenta con un texto más largo.");
+      }
+
       setQuestions(generated);
       setShowConfig(false);
+      persistConfig(apiKey.trim(), provider, rememberKey);
     } catch (err) {
       console.error("Error generando quiz:", err);
       setError(
         err instanceof Error
           ? err.message
-          : "Error desconocido al conectar con n8n. Verifica la URL y que el workflow esté activo."
+          : "Error desconocido al conectar con la IA. Verifica tu API key."
       );
     } finally {
       setIsGenerating(false);
@@ -151,6 +234,19 @@ export default function QuizGenerator() {
     hard: "Difícil",
   };
 
+  const providerInfo: Record<Provider, { name: string; url: string; placeholder: string }> = {
+    openai: {
+      name: "OpenAI (GPT-4o mini)",
+      url: "https://platform.openai.com/api-keys",
+      placeholder: "sk-...",
+    },
+    anthropic: {
+      name: "Anthropic (Claude 3.5 Haiku)",
+      url: "https://console.anthropic.com/settings/keys",
+      placeholder: "sk-ant-...",
+    },
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
       {/* Input Panel */}
@@ -160,7 +256,7 @@ export default function QuizGenerator() {
         </h2>
 
         <div className="space-y-5">
-          {/* Webhook Config */}
+          {/* AI Config */}
           <div>
             <button
               type="button"
@@ -176,7 +272,7 @@ export default function QuizGenerator() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
-              Configuración de n8n
+              Configuración de IA
             </button>
 
             <AnimatePresence>
@@ -187,24 +283,70 @@ export default function QuizGenerator() {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-4 rounded-xl bg-muted/50 border border-border space-y-3">
-                    <label
-                      htmlFor="webhook-url"
-                      className="block text-sm font-semibold text-foreground"
-                    >
-                      URL del Webhook de n8n
-                    </label>
-                    <input
-                      id="webhook-url"
-                      type="url"
-                      value={webhookUrl}
-                      onChange={(e) => setWebhookUrl(e.target.value)}
-                      className="w-full p-3 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 placeholder:text-muted-foreground text-sm"
-                      placeholder="https://tu-instancia.n8n.cloud/webhook/..."
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Pega aquí la URL de producción del nodo Webhook de tu flujo en n8n.
-                    </p>
+                  <div className="p-4 rounded-xl bg-muted/50 border border-border space-y-4">
+                    {/* Provider */}
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Proveedor de IA
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(Object.keys(providerInfo) as Provider[]).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setProvider(p)}
+                            className={`p-3 rounded-xl border text-sm font-semibold transition-all duration-200 ${
+                              provider === p
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-background text-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {providerInfo[p].name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* API Key */}
+                    <div>
+                      <label
+                        htmlFor="api-key"
+                        className="block text-sm font-semibold text-foreground mb-2"
+                      >
+                        Tu API Key
+                      </label>
+                      <input
+                        id="api-key"
+                        type="password"
+                        autoComplete="off"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        className="w-full p-3 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 placeholder:text-muted-foreground text-sm font-mono"
+                        placeholder={providerInfo[provider].placeholder}
+                      />
+                      <div className="flex items-center justify-between mt-2 gap-3 flex-wrap">
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={rememberKey}
+                            onChange={(e) => setRememberKey(e.target.checked)}
+                            className="rounded border-border"
+                          />
+                          Recordar en este navegador
+                        </label>
+                        <a
+                          href={providerInfo[provider].url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-primary hover:underline"
+                        >
+                          Obtener API key →
+                        </a>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                        🔒 Tu API key se usa solo desde tu navegador para llamar al proveedor. No se envía a ningún servidor intermedio.
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -217,7 +359,7 @@ export default function QuizGenerator() {
               htmlFor="content-input"
               className="block text-sm font-semibold text-foreground mb-2"
             >
-              Pega tu contenido aquí
+              Pega tu contenido o palabra clave
             </label>
             <textarea
               id="content-input"
@@ -225,7 +367,7 @@ export default function QuizGenerator() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="w-full p-4 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all duration-200 placeholder:text-muted-foreground"
-              placeholder="Ingresa tus notas de clase, artículos, capítulos de libro o cualquier texto educativo para generar preguntas de opción múltiple con IA..."
+              placeholder="Ingresa tus notas, un artículo, un capítulo, o simplemente una palabra clave / tema (ej: 'Revolución Francesa', 'Fotosíntesis', 'Ciclo del agua')..."
             />
           </div>
 
@@ -277,7 +419,7 @@ export default function QuizGenerator() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleGenerate}
-              disabled={!text.trim() || !webhookUrl.trim() || isGenerating}
+              disabled={!text.trim() || !apiKey.trim() || isGenerating}
               className="w-full sm:w-auto px-8 py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               {isGenerating ? (
@@ -316,7 +458,7 @@ export default function QuizGenerator() {
                 className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm"
               >
                 <p className="font-semibold mb-1">Error al generar</p>
-                <p>{error}</p>
+                <p className="break-words">{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -389,9 +531,9 @@ export default function QuizGenerator() {
         <div className="bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border">
           <h3 className="text-xl font-bold text-primary mb-3 font-heading">Cómo usar</h3>
           <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-            <li>Configura tu webhook de n8n con IA</li>
-            <li>Pega la URL del webhook</li>
-            <li>Pega un texto educativo</li>
+            <li>Elige tu proveedor de IA (OpenAI o Claude)</li>
+            <li>Pega tu API key personal</li>
+            <li>Escribe un texto o palabra clave</li>
             <li>Selecciona dificultad y número de preguntas</li>
             <li>Haz clic en "Generar Quiz"</li>
             <li>¡Responde y revisa tus resultados!</li>
