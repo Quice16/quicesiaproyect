@@ -120,8 +120,192 @@ async function callAnthropic(apiKey: string, prompt: string): Promise<QuizQuesti
 
   const data = await response.json();
   const content = data.content?.[0]?.text ?? "";
-  const parsed = extractJson(content);
-  return parsed.questions;
+  return extractJson(content).questions;
+}
+
+async function callDeepSeek(apiKey: string, prompt: string): Promise<QuizQuestion[]> {
+  const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: "Devuelve solo JSON válido, sin markdown." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`DeepSeek ${response.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return extractJson(data.choices?.[0]?.message?.content ?? "").questions;
+}
+
+async function callGemini(apiKey: string, prompt: string): Promise<QuizQuestion[]> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, responseMimeType: "application/json" },
+    }),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini ${response.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return extractJson(data.candidates?.[0]?.content?.parts?.[0]?.text ?? "").questions;
+}
+
+async function callMistral(apiKey: string, prompt: string): Promise<QuizQuestion[]> {
+  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "mistral-small-latest",
+      messages: [
+        { role: "system", content: "Devuelve solo JSON válido, sin markdown." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Mistral ${response.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await response.json();
+  return extractJson(data.choices?.[0]?.message?.content ?? "").questions;
+}
+
+// ============= Generador LOCAL (sin API key, sin IA) =============
+const STOPWORDS = new Set(
+  "a al algo algun alguna algunas alguno algunos ante antes aquel aquella aquellas aquellos aqui asi aun aunque cada como con contra cual cuales cuando cuanta cuantas cuanto cuantos de del desde donde dos el ella ellas ellos en entre era erais eramos eran eras eres es esa esas ese eso esos esta estaba estaban estado estamos estan estar estas este esto estos estoy fue fueron fui ha habia habian han has hasta hay he hizo la las le les lo los mas me mi mientras mis mucho muchos muy nada ni no nos nosotros nuestra nuestras nuestro nuestros o os otra otras otro otros para pero poco por porque pues que quien quienes se sea sean segun ser si sido siempre sin sino sobre solo somos son soy su sus tambien tan tanto te tiene tienen toda todas todo todos tras tu tus un una unas uno unos vosotros voy y ya yo".split(
+    " "
+  )
+);
+
+function tokenize(s: string): string[] {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9ñ\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function splitSentences(text: string): string[] {
+  return text
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡])/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 25 && s.length < 280);
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateLocalQuiz(
+  text: string,
+  difficulty: string,
+  numQuestions: number
+): QuizQuestion[] {
+  const sentences = splitSentences(text);
+  if (sentences.length === 0) {
+    throw new Error(
+      "El modo sin IA necesita un texto con varias oraciones completas (mínimo 2-3 frases). Pega un párrafo más extenso o usa un proveedor de IA."
+    );
+  }
+
+  const wordFreq = new Map<string, number>();
+  for (const s of sentences) {
+    for (const w of tokenize(s)) {
+      if (w.length < 5 || STOPWORDS.has(w)) continue;
+      wordFreq.set(w, (wordFreq.get(w) ?? 0) + 1);
+    }
+  }
+  const vocab = Array.from(wordFreq.keys());
+  if (vocab.length < 4) {
+    throw new Error(
+      "El texto es demasiado corto o repetitivo para el modo sin IA. Agrega más contenido."
+    );
+  }
+
+  const minLen = difficulty === "hard" ? 6 : difficulty === "medium" ? 5 : 4;
+  const candidateSentences = shuffle(sentences).slice(0, numQuestions * 3);
+  const questions: QuizQuestion[] = [];
+  const usedKeywords = new Set<string>();
+
+  for (const sentence of candidateSentences) {
+    if (questions.length >= numQuestions) break;
+    const words = tokenize(sentence).filter(
+      (w) => w.length >= minLen && !STOPWORDS.has(w) && !usedKeywords.has(w)
+    );
+    if (words.length === 0) continue;
+    words.sort((a, b) => (wordFreq.get(b) ?? 0) - (wordFreq.get(a) ?? 0));
+    const keyword = words[0];
+    usedKeywords.add(keyword);
+
+    // Buscar la palabra original con sus tildes/mayúsculas en la oración
+    const sentenceWords = sentence.split(/\b/);
+    const original = sentenceWords.find(
+      (w) =>
+        w
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") === keyword
+    );
+    if (!original) continue;
+
+    const blanked = sentence.replace(original, "_____");
+    if (blanked === sentence) continue;
+
+    const distractors = shuffle(
+      vocab.filter((w) => w !== keyword && Math.abs(w.length - keyword.length) <= 4)
+    ).slice(0, 3);
+    if (distractors.length < 3) continue;
+
+    const allOptions = shuffle([original, ...distractors]);
+    const labels = ["A", "B", "C", "D"];
+    const options: QuizOption[] = allOptions.map((text, i) => ({ label: labels[i], text }));
+    const correctLabel = options.find(
+      (o) => o.text.toLowerCase() === original.toLowerCase()
+    )!.label;
+
+    questions.push({
+      question: `Completa la oración según el texto: "${blanked}"`,
+      options,
+      correctAnswer: correctLabel,
+      explanation: `La palabra correcta es "${original}" según el texto original.`,
+    });
+  }
+
+  if (questions.length === 0) {
+    throw new Error(
+      "No se pudieron generar preguntas en modo sin IA. Intenta con un texto más largo y descriptivo."
+    );
+  }
+  return questions;
 }
 
 export default function QuizGenerator() {
