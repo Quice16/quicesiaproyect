@@ -492,7 +492,7 @@ export default function QuizGenerator() {
       {/* Input Panel */}
       <section className="lg:col-span-2 bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border">
         <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 tracking-tight">
-          Generar Quiz con IA
+          Generar Quiz
         </h2>
 
         <div className="space-y-5">
