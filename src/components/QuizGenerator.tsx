@@ -524,69 +524,83 @@ export default function QuizGenerator() {
                   className="overflow-hidden"
                 >
                   <div className="p-4 rounded-xl bg-muted/50 border border-border space-y-4">
-                    {/* Provider */}
-                    <div>
-                      <label className="block text-sm font-semibold text-foreground mb-2">
-                        Proveedor de IA
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(Object.keys(providerInfo) as Provider[]).map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => setProvider(p)}
-                            className={`p-3 rounded-xl border text-sm font-semibold transition-all duration-200 ${
-                              provider === p
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-background text-foreground hover:bg-muted"
-                            }`}
-                          >
-                            {providerInfo[p].name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* API Key */}
+                    {/* Provider dropdown */}
                     <div>
                       <label
-                        htmlFor="api-key"
+                        htmlFor="provider-select"
                         className="block text-sm font-semibold text-foreground mb-2"
                       >
-                        Tu API Key
+                        Modelo / Proveedor
                       </label>
-                      <input
-                        id="api-key"
-                        type="password"
-                        autoComplete="off"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        className="w-full p-3 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 placeholder:text-muted-foreground text-sm font-mono"
-                        placeholder={providerInfo[provider].placeholder}
-                      />
-                      <div className="flex items-center justify-between mt-2 gap-3 flex-wrap">
-                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={rememberKey}
-                            onChange={(e) => setRememberKey(e.target.checked)}
-                            className="rounded border-border"
-                          />
-                          Recordar en este navegador
-                        </label>
-                        <a
-                          href={providerInfo[provider].url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs font-semibold text-primary hover:underline"
-                        >
-                          Obtener API key →
-                        </a>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                        🔒 Tu API key se usa solo desde tu navegador para llamar al proveedor. No se envía a ningún servidor intermedio.
-                      </p>
+                      <select
+                        id="provider-select"
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value as Provider)}
+                        className="w-full appearance-none p-3 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer transition-all duration-200"
+                      >
+                        <optgroup label="Sin cuenta ni API key">
+                          <option value="local">🆓 Sin IA · Modo local (gratis)</option>
+                        </optgroup>
+                        <optgroup label="IA en línea (requiere API key)">
+                          <option value="openai">OpenAI · GPT-4o mini</option>
+                          <option value="anthropic">Anthropic · Claude 3.5 Haiku</option>
+                          <option value="deepseek">DeepSeek · deepseek-chat</option>
+                          <option value="gemini">Google · Gemini 2.0 Flash</option>
+                          <option value="mistral">Mistral · mistral-small</option>
+                        </optgroup>
+                      </select>
+                      {provider === "local" && (
+                        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                          ℹ️ El <strong>modo local</strong> genera preguntas de
+                          completar la oración usando únicamente el texto que pegues.
+                          No usa internet, no requiere API key y es 100% gratuito.
+                          Funciona mejor con párrafos largos y descriptivos.
+                        </p>
+                      )}
                     </div>
+
+                    {/* API Key (oculto en modo local) */}
+                    {currentProvider.needsKey && (
+                      <div>
+                        <label
+                          htmlFor="api-key"
+                          className="block text-sm font-semibold text-foreground mb-2"
+                        >
+                          Tu API Key de {currentProvider.short}
+                        </label>
+                        <input
+                          id="api-key"
+                          type="password"
+                          autoComplete="off"
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          className="w-full p-3 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 placeholder:text-muted-foreground text-sm font-mono"
+                          placeholder={currentProvider.placeholder}
+                        />
+                        <div className="flex items-center justify-between mt-2 gap-3 flex-wrap">
+                          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={rememberKey}
+                              onChange={(e) => setRememberKey(e.target.checked)}
+                              className="rounded border-border"
+                            />
+                            Recordar en este navegador
+                          </label>
+                          <a
+                            href={currentProvider.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-semibold text-primary hover:underline"
+                          >
+                            Obtener API key →
+                          </a>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                          🔒 Tu API key se usa solo desde tu navegador para llamar al proveedor. No se envía a ningún servidor intermedio.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
