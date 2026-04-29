@@ -1,5 +1,62 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+async function extractTextFromPdf(file: File): Promise<string> {
+  // Carga perezosa de pdfjs solo cuando se necesita
+  const pdfjs = await import("pdfjs-dist");
+  // @ts-expect-error - worker como URL
+  const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      // @ts-expect-error - tipo TextItem
+      .map((it) => ("str" in it ? it.str : ""))
+      .join(" ");
+    fullText += pageText + "\n\n";
+  }
+  return fullText.trim();
+}
+
+async function extractTextFromDocx(file: File): Promise<string> {
+  const mammoth = await import("mammoth/mammoth.browser");
+  const buffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+  return (result.value || "").trim();
+}
+
+async function extractTextFromFile(file: File): Promise<string> {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(
+      `El archivo supera los 10 MB (${(file.size / 1024 / 1024).toFixed(1)} MB). Sube uno más liviano.`
+    );
+  }
+  const name = file.name.toLowerCase();
+  const type = file.type;
+
+  if (type === "application/pdf" || name.endsWith(".pdf")) {
+    return extractTextFromPdf(file);
+  }
+  if (
+    type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    name.endsWith(".docx")
+  ) {
+    return extractTextFromDocx(file);
+  }
+  if (type.startsWith("text/") || name.endsWith(".txt") || name.endsWith(".md")) {
+    return (await file.text()).trim();
+  }
+  throw new Error(
+    "Formato no soportado. Usa PDF, DOCX, TXT o MD. (Los .doc antiguos no son compatibles, conviértelo a .docx)"
+  );
+}
 
 interface QuizOption {
   label: string;
