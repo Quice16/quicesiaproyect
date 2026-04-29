@@ -431,6 +431,7 @@ export default function QuizGenerator() {
   const [quizFinished, setQuizFinished] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractStatus, setExtractStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,12 +439,13 @@ export default function QuizGenerator() {
     if (!file) return;
     setError(null);
     setIsExtracting(true);
+    setExtractStatus("Cargando archivo...");
     setFileName(file.name);
     try {
-      const extracted = await extractTextFromFile(file);
+      const extracted = await extractTextFromFile(file, (msg) => setExtractStatus(msg));
       if (!extracted || extracted.length < 30) {
         throw new Error(
-          "No se pudo extraer suficiente texto del documento. Puede ser un PDF escaneado (imagen) sin texto seleccionable."
+          "No se pudo extraer suficiente texto del documento. El OCR tampoco encontró texto legible — verifica que el escaneo sea nítido."
         );
       }
       setText(extracted);
@@ -453,6 +455,7 @@ export default function QuizGenerator() {
       setFileName(null);
     } finally {
       setIsExtracting(false);
+      setExtractStatus("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
