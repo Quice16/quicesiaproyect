@@ -606,6 +606,40 @@ export default function QuizGenerator() {
                 );
               })}
             </div>
+
+            {/* Botón Terminar Quiz / Resumen */}
+            {!quizFinished ? (
+              <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Has respondido <span className="font-bold text-foreground">{Object.keys(selectedAnswers).length}</span> de <span className="font-bold text-foreground">{questions.length}</span> preguntas.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleFinishQuiz}
+                  disabled={Object.keys(selectedAnswers).length === 0}
+                  className="px-6 py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {allAnswered ? "Terminar Quiz y ver resultados" : "Terminar Quiz (algunas sin responder)"}
+                </motion.button>
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 pt-6 border-t border-border"
+              >
+                <div className="rounded-2xl p-5 bg-primary/5 border border-primary/20 text-center">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Resultado final</p>
+                  <p className="text-4xl font-bold text-primary mt-2 tabular-nums">
+                    {score} / {questions.length}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Correctas: <span className="text-success font-bold">{score}</span> · Incorrectas: <span className="text-destructive font-bold">{Object.keys(selectedAnswers).length - score}</span> · Sin responder: <span className="font-bold">{questions.length - Object.keys(selectedAnswers).length}</span>
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </>
         ) : (
           <>
