@@ -1,5 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+async function extractTextFromPdf(file: File): Promise<string> {
+  // Carga perezosa de pdfjs solo cuando se necesita
+  const pdfjs: any = await import("pdfjs-dist");
+  const workerMod: any = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
+
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((it: any) => ("str" in it ? it.str : ""))
+      .join(" ");
+    fullText += pageText + "\n\n";
+  }
+  return fullText.trim();
+}
+
+async function extractTextFromDocx(file: File): Promise<string> {
+  const mammoth: any = await import("mammoth/mammoth.browser.js");
+  const buffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+  return (result.value || "").trim();
+}
+
+async function extractTextFromFile(file: File): Promise<string> {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(
+      `El archivo supera los 10 MB (${(file.size / 1024 / 1024).toFixed(1)} MB). Sube uno más liviano.`
+    );
+  }
+  const name = file.name.toLowerCase();
+  const type = file.type;
+
+  if (type === "application/pdf" || name.endsWith(".pdf")) {
+    return extractTextFromPdf(file);
+  }
+  if (
+    type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    name.endsWith(".docx")
+  ) {
+    return extractTextFromDocx(file);
+  }
+  if (type.startsWith("text/") || name.endsWith(".txt") || name.endsWith(".md")) {
+    return (await file.text()).trim();
+  }
+  throw new Error(
+    "Formato no soportado. Usa PDF, DOCX, TXT o MD. (Los .doc antiguos no son compatibles, conviértelo a .docx)"
+  );
+}
 
 interface QuizOption {
   label: string;
@@ -322,6 +377,38 @@ export default function QuizGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(true);
   const [quizFinished, setQuizFinished] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setIsExtracting(true);
+    setFileName(file.name);
+    try {
+      const extracted = await extractTextFromFile(file);
+      if (!extracted || extracted.length < 30) {
+        throw new Error(
+          "No se pudo extraer suficiente texto del documento. Puede ser un PDF escaneado (imagen) sin texto seleccionable."
+        );
+      }
+      setText(extracted);
+    } catch (err) {
+      console.error("Error extrayendo archivo:", err);
+      setError(err instanceof Error ? err.message : "No se pudo leer el archivo.");
+      setFileName(null);
+    } finally {
+      setIsExtracting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const clearFile = () => {
+    setFileName(null);
+    setText("");
+  };
 
   // Cargar configuración guardada (solo si el usuario eligió recordar)
   useEffect(() => {
@@ -759,22 +846,67 @@ export default function QuizGenerator() {
             </AnimatePresence>
           </div>
 
-          {/* Text Input */}
+          {/* Text Input + File Upload */}
           <div>
-            <label
-              htmlFor="content-input"
-              className="block text-sm font-semibold text-foreground mb-2"
-            >
-              Pega tu contenido o palabra clave
-            </label>
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+              <label
+                htmlFor="content-input"
+                className="block text-sm font-semibold text-foreground"
+              >
+                Pega tu contenido, palabra clave o sube un documento
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                  onChange={handleFileSelected}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isExtracting}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/30 text-xs font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                  {isExtracting ? "Leyendo..." : "Subir PDF / DOCX / TXT"}
+                </button>
+              </div>
+            </div>
+
+            {fileName && (
+              <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30 text-xs">
+                <span className="text-foreground truncate">
+                  📄 <strong>{fileName}</strong> — texto cargado ({text.length.toLocaleString()} caracteres)
+                </span>
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="text-destructive font-semibold hover:underline shrink-0"
+                >
+                  Quitar
+                </button>
+              </div>
+            )}
+
             <textarea
               id="content-input"
               rows={10}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (fileName) setFileName(null);
+              }}
               className="w-full p-4 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all duration-200 placeholder:text-muted-foreground"
-              placeholder="Ingresa tus notas, un artículo, un capítulo, o simplemente una palabra clave / tema (ej: 'Revolución Francesa', 'Fotosíntesis', 'Ciclo del agua')..."
+              placeholder="Ingresa tus notas, un artículo, un capítulo, una palabra clave / tema (ej: 'Revolución Francesa')... o sube un documento PDF / Word (máx. 10 MB)."
             />
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+              📎 Formatos soportados: <strong>PDF, DOCX, TXT, MD</strong> · Máximo <strong>10 MB</strong>. Los PDFs escaneados (solo imagen) no se pueden leer sin OCR.
+            </p>
           </div>
 
           {/* Controls */}
