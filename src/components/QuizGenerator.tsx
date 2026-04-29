@@ -487,15 +487,121 @@ export default function QuizGenerator() {
 
   const currentProvider = providerInfo[provider];
 
+  const hasQuiz = questions.length > 0;
+  const resetQuiz = () => {
+    setQuestions([]);
+    setSelectedAnswers({});
+    setShowAnswers({});
+    setError(null);
+    setShowConfig(true);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-      {/* Input Panel */}
+      {/* Main Panel: muestra configuración O las preguntas generadas */}
       <section className="lg:col-span-2 bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border">
-        <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 tracking-tight">
-          Generar Quiz
-        </h2>
+        {hasQuiz ? (
+          <>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+              <h2 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight font-heading">
+                Quiz Generado ({questions.length})
+              </h2>
+              <button
+                type="button"
+                onClick={resetQuiz}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted text-foreground font-semibold text-sm border border-border hover:bg-muted/70 transition-colors duration-200"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Nuevo Quiz
+              </button>
+            </div>
 
-        <div className="space-y-5">
+            <div className="space-y-6">
+              {questions.map((q, qIndex) => {
+                const isRevealed = showAnswers[qIndex];
+                return (
+                  <motion.div
+                    key={qIndex}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: qIndex * 0.05 }}
+                    className="rounded-2xl p-5 lg:p-6 border border-border bg-background"
+                  >
+                    <p className="font-semibold text-base lg:text-lg text-foreground mb-4">
+                      {qIndex + 1}. {q.question}
+                    </p>
+
+                    <div className="space-y-3">
+                      {q.options.map((opt) => {
+                        const isSelected = selectedAnswers[qIndex] === opt.label;
+                        const isCorrect = opt.label === q.correctAnswer;
+                        let optionClasses =
+                          "w-full text-left px-5 py-3 rounded-xl border transition-all duration-200 flex items-center gap-3 ";
+                        if (isRevealed && isCorrect) {
+                          optionClasses += "border-success bg-success/10 text-foreground";
+                        } else if (isRevealed && isSelected && !isCorrect) {
+                          optionClasses += "border-destructive bg-destructive/10 text-foreground";
+                        } else if (isSelected) {
+                          optionClasses += "border-primary bg-primary/10 text-foreground";
+                        } else {
+                          optionClasses +=
+                            "border-border bg-card text-foreground hover:bg-muted hover:border-muted-foreground/30 cursor-pointer";
+                        }
+                        return (
+                          <button
+                            key={opt.label}
+                            onClick={() => handleSelectAnswer(qIndex, opt.label)}
+                            disabled={!!isRevealed}
+                            className={optionClasses}
+                          >
+                            <span className="font-bold text-sm w-7 h-7 flex items-center justify-center rounded-lg bg-muted shrink-0">
+                              {opt.label}
+                            </span>
+                            <span className="text-sm">{opt.text}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <AnimatePresence>
+                      {isRevealed && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-5 pt-4 border-t border-border"
+                        >
+                          <p
+                            className={`font-semibold text-sm mb-2 ${
+                              selectedAnswers[qIndex] === q.correctAnswer
+                                ? "text-success"
+                                : "text-destructive"
+                            }`}
+                          >
+                            {selectedAnswers[qIndex] === q.correctAnswer
+                              ? "✓ ¡Correcto!"
+                              : `✗ Incorrecto — La respuesta correcta es: ${q.correctAnswer}`}
+                          </p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            <strong>Explicación:</strong> {q.explanation}
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 tracking-tight">
+              Generar Quiz
+            </h2>
+
+            <div className="space-y-5">
           {/* AI Config */}
           <div>
             <button
@@ -717,6 +823,8 @@ export default function QuizGenerator() {
             )}
           </AnimatePresence>
         </div>
+          </>
+        )}
       </section>
 
       {/* Stats Panel */}
@@ -844,120 +952,7 @@ export default function QuizGenerator() {
           </ol>
         </div>
 
-        {questions.length > 0 && (
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              setQuestions([]);
-              setSelectedAnswers({});
-              setShowAnswers({});
-              setError(null);
-            }}
-            className="w-full py-3 px-6 rounded-xl bg-muted text-foreground font-semibold text-sm border border-border hover:bg-muted/70 transition-colors duration-200"
-          >
-            Nuevo Quiz
-          </motion.button>
-        )}
       </aside>
-
-      {/* Questions Section */}
-      <AnimatePresence>
-        {questions.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="lg:col-span-3 space-y-6"
-          >
-            <h2 className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight font-heading">
-              Quiz Generado ({questions.length} preguntas)
-            </h2>
-
-            {questions.map((q, qIndex) => (
-              <motion.div
-                key={qIndex}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: qIndex * 0.08 }}
-                className="bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border"
-              >
-                <p className="font-semibold text-lg text-foreground mb-4">
-                  {qIndex + 1}. {q.question}
-                </p>
-
-                <div className="space-y-3">
-                  {q.options.map((opt) => {
-                    const isSelected = selectedAnswers[qIndex] === opt.label;
-                    const isCorrect = opt.label === q.correctAnswer;
-                    const isRevealed = showAnswers[qIndex];
-
-                    let optionClasses =
-                      "w-full text-left px-5 py-3.5 rounded-xl border transition-all duration-200 flex items-center gap-3 ";
-
-                    if (isRevealed && isCorrect) {
-                      optionClasses +=
-                        "border-success bg-success/10 text-foreground";
-                    } else if (isRevealed && isSelected && !isCorrect) {
-                      optionClasses +=
-                        "border-destructive bg-destructive/10 text-foreground";
-                    } else if (isSelected) {
-                      optionClasses +=
-                        "border-primary bg-primary/10 text-foreground";
-                    } else {
-                      optionClasses +=
-                        "border-border bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30 cursor-pointer";
-                    }
-
-                    return (
-                      <button
-                        key={opt.label}
-                        onClick={() => handleSelectAnswer(qIndex, opt.label)}
-                        disabled={!!showAnswers[qIndex]}
-                        className={optionClasses}
-                      >
-                        <span className="font-bold text-sm w-7 h-7 flex items-center justify-center rounded-lg bg-muted shrink-0">
-                          {opt.label}
-                        </span>
-                        <span className="text-sm">{opt.text}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <AnimatePresence>
-                  {showAnswers[qIndex] && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-5 pt-4 border-t border-border"
-                    >
-                      <p
-                        className={`font-semibold text-sm mb-2 ${
-                          selectedAnswers[qIndex] === q.correctAnswer
-                            ? "text-success"
-                            : "text-destructive"
-                        }`}
-                      >
-                        {selectedAnswers[qIndex] === q.correctAnswer
-                          ? "✓ ¡Correcto!"
-                          : `✗ Incorrecto — La respuesta correcta es: ${q.correctAnswer}`}
-                      </p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        <strong>Explicación:</strong> {q.explanation}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
-          </motion.section>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
