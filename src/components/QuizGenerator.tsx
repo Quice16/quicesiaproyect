@@ -902,10 +902,10 @@ export default function QuizGenerator() {
             )}
 
             {/* Desglose por pregunta */}
-            {questions.length > 0 && Object.keys(selectedAnswers).length > 0 && (
+            {questions.length > 0 && (
               <div className="pt-4 border-t border-border">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Desglose por pregunta
+                  {quizFinished ? "Desglose por pregunta" : "Progreso por pregunta"}
                 </p>
                 <div className="grid grid-cols-5 gap-2">
                   {questions.map((q, i) => {
@@ -913,40 +913,54 @@ export default function QuizGenerator() {
                     const correct = answered && selectedAnswers[i] === q.correctAnswer;
                     let cls =
                       "aspect-square rounded-lg flex items-center justify-center text-xs font-bold border transition-all duration-200 ";
-                    if (!answered) {
-                      cls += "bg-muted text-muted-foreground border-border";
-                    } else if (correct) {
-                      cls += "bg-success/15 text-success border-success/40";
+                    if (!quizFinished) {
+                      // Durante el quiz: solo mostrar si está respondida
+                      if (answered) {
+                        cls += "bg-primary/15 text-primary border-primary/40";
+                      } else {
+                        cls += "bg-muted text-muted-foreground border-border";
+                      }
                     } else {
-                      cls += "bg-destructive/15 text-destructive border-destructive/40";
+                      // Quiz terminado: mostrar correctas/incorrectas
+                      if (!answered) {
+                        cls += "bg-muted text-muted-foreground border-border";
+                      } else if (correct) {
+                        cls += "bg-success/15 text-success border-success/40";
+                      } else {
+                        cls += "bg-destructive/15 text-destructive border-destructive/40";
+                      }
                     }
                     return (
                       <div
                         key={i}
                         className={cls}
                         title={
-                          !answered
-                            ? `Pregunta ${i + 1}: sin responder`
-                            : correct
-                              ? `Pregunta ${i + 1}: correcta`
-                              : `Pregunta ${i + 1}: incorrecta (correcta: ${q.correctAnswer})`
+                          !quizFinished
+                            ? `Pregunta ${i + 1}: ${answered ? "respondida" : "sin responder"}`
+                            : !answered
+                              ? `Pregunta ${i + 1}: sin responder`
+                              : correct
+                                ? `Pregunta ${i + 1}: correcta`
+                                : `Pregunta ${i + 1}: incorrecta (correcta: ${q.correctAnswer})`
                         }
                       >
-                        {answered ? (correct ? "✓" : "✗") : i + 1}
+                        {quizFinished && answered ? (correct ? "✓" : "✗") : i + 1}
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex justify-between gap-2 mt-3 text-xs">
-                  <span className="flex items-center gap-1.5 text-success font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-success" />
-                    Correctas: {score}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-destructive font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-destructive" />
-                    Incorrectas: {Object.keys(selectedAnswers).length - score}
-                  </span>
-                </div>
+                {quizFinished && (
+                  <div className="flex justify-between gap-2 mt-3 text-xs">
+                    <span className="flex items-center gap-1.5 text-success font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-success" />
+                      Correctas: {score}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-destructive font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-destructive" />
+                      Incorrectas: {Object.keys(selectedAnswers).length - score}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
