@@ -846,22 +846,67 @@ export default function QuizGenerator() {
             </AnimatePresence>
           </div>
 
-          {/* Text Input */}
+          {/* Text Input + File Upload */}
           <div>
-            <label
-              htmlFor="content-input"
-              className="block text-sm font-semibold text-foreground mb-2"
-            >
-              Pega tu contenido o palabra clave
-            </label>
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+              <label
+                htmlFor="content-input"
+                className="block text-sm font-semibold text-foreground"
+              >
+                Pega tu contenido, palabra clave o sube un documento
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                  onChange={handleFileSelected}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isExtracting}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/30 text-xs font-semibold hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+                  </svg>
+                  {isExtracting ? "Leyendo..." : "Subir PDF / DOCX / TXT"}
+                </button>
+              </div>
+            </div>
+
+            {fileName && (
+              <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30 text-xs">
+                <span className="text-foreground truncate">
+                  📄 <strong>{fileName}</strong> — texto cargado ({text.length.toLocaleString()} caracteres)
+                </span>
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="text-destructive font-semibold hover:underline shrink-0"
+                >
+                  Quitar
+                </button>
+              </div>
+            )}
+
             <textarea
               id="content-input"
               rows={10}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (fileName) setFileName(null);
+              }}
               className="w-full p-4 border border-border rounded-xl text-foreground bg-background focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all duration-200 placeholder:text-muted-foreground"
-              placeholder="Ingresa tus notas, un artículo, un capítulo, o simplemente una palabra clave / tema (ej: 'Revolución Francesa', 'Fotosíntesis', 'Ciclo del agua')..."
+              placeholder="Ingresa tus notas, un artículo, un capítulo, una palabra clave / tema (ej: 'Revolución Francesa')... o sube un documento PDF / Word (máx. 10 MB)."
             />
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+              📎 Formatos soportados: <strong>PDF, DOCX, TXT, MD</strong> · Máximo <strong>10 MB</strong>. Los PDFs escaneados (solo imagen) no se pueden leer sin OCR.
+            </p>
           </div>
 
           {/* Controls */}
