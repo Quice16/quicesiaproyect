@@ -321,6 +321,7 @@ export default function QuizGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(true);
+  const [quizFinished, setQuizFinished] = useState(false);
 
   // Cargar configuración guardada (solo si el usuario eligió recordar)
   useEffect(() => {
