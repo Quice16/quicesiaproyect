@@ -823,6 +823,8 @@ export default function QuizGenerator() {
             )}
           </AnimatePresence>
         </div>
+          </>
+        )}
       </section>
 
       {/* Stats Panel */}
