@@ -377,6 +377,38 @@ export default function QuizGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(true);
   const [quizFinished, setQuizFinished] = useState(false);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+    setIsExtracting(true);
+    setFileName(file.name);
+    try {
+      const extracted = await extractTextFromFile(file);
+      if (!extracted || extracted.length < 30) {
+        throw new Error(
+          "No se pudo extraer suficiente texto del documento. Puede ser un PDF escaneado (imagen) sin texto seleccionable."
+        );
+      }
+      setText(extracted);
+    } catch (err) {
+      console.error("Error extrayendo archivo:", err);
+      setError(err instanceof Error ? err.message : "No se pudo leer el archivo.");
+      setFileName(null);
+    } finally {
+      setIsExtracting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const clearFile = () => {
+    setFileName(null);
+    setText("");
+  };
 
   // Cargar configuración guardada (solo si el usuario eligió recordar)
   useEffect(() => {
