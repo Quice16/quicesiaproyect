@@ -509,7 +509,7 @@ export default function QuizGenerator() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start">
       {/* Main Panel: muestra configuración O las preguntas generadas */}
       <section className="lg:col-span-2 bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border">
         {hasQuiz ? (
