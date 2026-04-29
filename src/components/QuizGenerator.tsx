@@ -505,6 +505,7 @@ export default function QuizGenerator() {
     setShowAnswers({});
     setError(null);
     setShowConfig(true);
+    setQuizFinished(false);
   };
 
   return (
