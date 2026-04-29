@@ -970,7 +970,7 @@ export default function QuizGenerator() {
               placeholder="Ingresa tus notas, un artículo, un capítulo, una palabra clave / tema (ej: 'Revolución Francesa')... o sube un documento PDF / Word (máx. 10 MB)."
             />
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              📎 Formatos soportados: <strong>PDF, DOCX, TXT, MD</strong> · Máximo <strong>10 MB</strong>. Los PDFs escaneados (solo imagen) no se pueden leer sin OCR.
+              📎 Formatos: <strong>PDF, DOCX, TXT, MD</strong> · Máx. <strong>10 MB</strong>. Los PDF con texto se leen al instante; los <strong>escaneados (solo imagen) activan OCR automático</strong> (puede tardar 1-3 min según el tamaño y descarga inicial del modelo ~10 MB).
             </p>
           </div>
 
