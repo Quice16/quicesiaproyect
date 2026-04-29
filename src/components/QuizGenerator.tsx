@@ -375,6 +375,7 @@ export default function QuizGenerator() {
     setSelectedAnswers({});
     setShowAnswers({});
     setQuestions([]);
+    setQuizFinished(false);
 
     try {
       const prompt = buildPrompt(text, difficulty, numQuestions);
