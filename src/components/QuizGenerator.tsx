@@ -423,8 +423,17 @@ export default function QuizGenerator() {
   };
 
   const handleSelectAnswer = (qIndex: number, label: string) => {
+    if (quizFinished) return;
     setSelectedAnswers((prev) => ({ ...prev, [qIndex]: label }));
-    setShowAnswers((prev) => ({ ...prev, [qIndex]: true }));
+  };
+
+  const handleFinishQuiz = () => {
+    const reveal: Record<number, boolean> = {};
+    questions.forEach((_, i) => {
+      reveal[i] = true;
+    });
+    setShowAnswers(reveal);
+    setQuizFinished(true);
   };
 
   const score = questions.length
