@@ -321,6 +321,7 @@ export default function QuizGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(true);
+  const [quizFinished, setQuizFinished] = useState(false);
 
   // Cargar configuración guardada (solo si el usuario eligió recordar)
   useEffect(() => {
@@ -374,6 +375,7 @@ export default function QuizGenerator() {
     setSelectedAnswers({});
     setShowAnswers({});
     setQuestions([]);
+    setQuizFinished(false);
 
     try {
       const prompt = buildPrompt(text, difficulty, numQuestions);
@@ -421,8 +423,17 @@ export default function QuizGenerator() {
   };
 
   const handleSelectAnswer = (qIndex: number, label: string) => {
+    if (quizFinished) return;
     setSelectedAnswers((prev) => ({ ...prev, [qIndex]: label }));
-    setShowAnswers((prev) => ({ ...prev, [qIndex]: true }));
+  };
+
+  const handleFinishQuiz = () => {
+    const reveal: Record<number, boolean> = {};
+    questions.forEach((_, i) => {
+      reveal[i] = true;
+    });
+    setShowAnswers(reveal);
+    setQuizFinished(true);
   };
 
   const score = questions.length
@@ -494,10 +505,11 @@ export default function QuizGenerator() {
     setShowAnswers({});
     setError(null);
     setShowConfig(true);
+    setQuizFinished(false);
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12 items-start">
       {/* Main Panel: muestra configuración O las preguntas generadas */}
       <section className="lg:col-span-2 bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border">
         {hasQuiz ? (
@@ -594,6 +606,40 @@ export default function QuizGenerator() {
                 );
               })}
             </div>
+
+            {/* Botón Terminar Quiz / Resumen */}
+            {!quizFinished ? (
+              <div className="mt-8 pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Has respondido <span className="font-bold text-foreground">{Object.keys(selectedAnswers).length}</span> de <span className="font-bold text-foreground">{questions.length}</span> preguntas.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleFinishQuiz}
+                  disabled={Object.keys(selectedAnswers).length === 0}
+                  className="px-6 py-3 rounded-xl bg-accent text-accent-foreground font-semibold text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {allAnswered ? "Terminar Quiz y ver resultados" : "Terminar Quiz (algunas sin responder)"}
+                </motion.button>
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 pt-6 border-t border-border"
+              >
+                <div className="rounded-2xl p-5 bg-primary/5 border border-primary/20 text-center">
+                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Resultado final</p>
+                  <p className="text-4xl font-bold text-primary mt-2 tabular-nums">
+                    {score} / {questions.length}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Correctas: <span className="text-success font-bold">{score}</span> · Incorrectas: <span className="text-destructive font-bold">{Object.keys(selectedAnswers).length - score}</span> · Sin responder: <span className="font-bold">{questions.length - Object.keys(selectedAnswers).length}</span>
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </>
         ) : (
           <>
@@ -828,7 +874,7 @@ export default function QuizGenerator() {
       </section>
 
       {/* Stats Panel */}
-      <aside className="space-y-6">
+      <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
         <div className="bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border">
           <h3 className="text-xl font-bold text-primary mb-4 font-heading">
             Estado del Quiz
@@ -856,10 +902,10 @@ export default function QuizGenerator() {
             )}
 
             {/* Desglose por pregunta */}
-            {questions.length > 0 && Object.keys(selectedAnswers).length > 0 && (
+            {questions.length > 0 && (
               <div className="pt-4 border-t border-border">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Desglose por pregunta
+                  {quizFinished ? "Desglose por pregunta" : "Progreso por pregunta"}
                 </p>
                 <div className="grid grid-cols-5 gap-2">
                   {questions.map((q, i) => {
@@ -867,44 +913,58 @@ export default function QuizGenerator() {
                     const correct = answered && selectedAnswers[i] === q.correctAnswer;
                     let cls =
                       "aspect-square rounded-lg flex items-center justify-center text-xs font-bold border transition-all duration-200 ";
-                    if (!answered) {
-                      cls += "bg-muted text-muted-foreground border-border";
-                    } else if (correct) {
-                      cls += "bg-success/15 text-success border-success/40";
+                    if (!quizFinished) {
+                      // Durante el quiz: solo mostrar si está respondida
+                      if (answered) {
+                        cls += "bg-primary/15 text-primary border-primary/40";
+                      } else {
+                        cls += "bg-muted text-muted-foreground border-border";
+                      }
                     } else {
-                      cls += "bg-destructive/15 text-destructive border-destructive/40";
+                      // Quiz terminado: mostrar correctas/incorrectas
+                      if (!answered) {
+                        cls += "bg-muted text-muted-foreground border-border";
+                      } else if (correct) {
+                        cls += "bg-success/15 text-success border-success/40";
+                      } else {
+                        cls += "bg-destructive/15 text-destructive border-destructive/40";
+                      }
                     }
                     return (
                       <div
                         key={i}
                         className={cls}
                         title={
-                          !answered
-                            ? `Pregunta ${i + 1}: sin responder`
-                            : correct
-                              ? `Pregunta ${i + 1}: correcta`
-                              : `Pregunta ${i + 1}: incorrecta (correcta: ${q.correctAnswer})`
+                          !quizFinished
+                            ? `Pregunta ${i + 1}: ${answered ? "respondida" : "sin responder"}`
+                            : !answered
+                              ? `Pregunta ${i + 1}: sin responder`
+                              : correct
+                                ? `Pregunta ${i + 1}: correcta`
+                                : `Pregunta ${i + 1}: incorrecta (correcta: ${q.correctAnswer})`
                         }
                       >
-                        {answered ? (correct ? "✓" : "✗") : i + 1}
+                        {quizFinished && answered ? (correct ? "✓" : "✗") : i + 1}
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex justify-between gap-2 mt-3 text-xs">
-                  <span className="flex items-center gap-1.5 text-success font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-success" />
-                    Correctas: {score}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-destructive font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-destructive" />
-                    Incorrectas: {Object.keys(selectedAnswers).length - score}
-                  </span>
-                </div>
+                {quizFinished && (
+                  <div className="flex justify-between gap-2 mt-3 text-xs">
+                    <span className="flex items-center gap-1.5 text-success font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-success" />
+                      Correctas: {score}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-destructive font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-destructive" />
+                      Incorrectas: {Object.keys(selectedAnswers).length - score}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
-            {allAnswered && (
+            {quizFinished && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
