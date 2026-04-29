@@ -3,7 +3,43 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-async function extractTextFromPdf(file: File): Promise<string> {
+type ProgressFn = (msg: string) => void;
+
+async function ocrPagesWithTesseract(
+  pdf: any,
+  onProgress?: ProgressFn
+): Promise<string> {
+  const { createWorker } = await import("tesseract.js");
+  onProgress?.("Iniciando OCR (descargando modelo es+en, ~10-15 MB la primera vez)...");
+  const worker = await createWorker(["spa", "eng"]);
+  try {
+    let ocrText = "";
+    const maxPages = Math.min(pdf.numPages, 30); // tope de seguridad
+    for (let i = 1; i <= maxPages; i++) {
+      onProgress?.(`OCR página ${i} de ${maxPages}...`);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2 }); // 2x para mejor precisión
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+      const { data } = await worker.recognize(canvas);
+      ocrText += (data.text || "") + "\n\n";
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+    return ocrText.trim();
+  } finally {
+    await worker.terminate();
+  }
+}
+
+async function extractTextFromPdf(
+  file: File,
+  onProgress?: ProgressFn
+): Promise<string> {
   // Carga perezosa de pdfjs solo cuando se necesita
   const pdfjs: any = await import("pdfjs-dist");
   const workerMod: any = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
@@ -11,6 +47,9 @@ async function extractTextFromPdf(file: File): Promise<string> {
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+
+  // 1) Intentar extracción de texto nativo (rápido, ideal para informes)
+  onProgress?.(`Leyendo texto del PDF (${pdf.numPages} páginas)...`);
   let fullText = "";
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -20,7 +59,17 @@ async function extractTextFromPdf(file: File): Promise<string> {
       .join(" ");
     fullText += pageText + "\n\n";
   }
-  return fullText.trim();
+  const trimmed = fullText.trim();
+
+  // 2) Si el texto nativo es muy escaso → es un PDF escaneado → OCR
+  // Heurística: menos de 50 caracteres por página en promedio
+  const avgPerPage = trimmed.length / pdf.numPages;
+  if (trimmed.length < 100 || avgPerPage < 50) {
+    onProgress?.("PDF parece escaneado (sin texto). Activando OCR...");
+    const ocr = await ocrPagesWithTesseract(pdf, onProgress);
+    if (ocr.length > trimmed.length) return ocr;
+  }
+  return trimmed;
 }
 
 async function extractTextFromDocx(file: File): Promise<string> {
@@ -30,7 +79,10 @@ async function extractTextFromDocx(file: File): Promise<string> {
   return (result.value || "").trim();
 }
 
-async function extractTextFromFile(file: File): Promise<string> {
+async function extractTextFromFile(
+  file: File,
+  onProgress?: ProgressFn
+): Promise<string> {
   if (file.size > MAX_FILE_SIZE) {
     throw new Error(
       `El archivo supera los 10 MB (${(file.size / 1024 / 1024).toFixed(1)} MB). Sube uno más liviano.`
@@ -40,7 +92,7 @@ async function extractTextFromFile(file: File): Promise<string> {
   const type = file.type;
 
   if (type === "application/pdf" || name.endsWith(".pdf")) {
-    return extractTextFromPdf(file);
+    return extractTextFromPdf(file, onProgress);
   }
   if (
     type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
@@ -379,6 +431,7 @@ export default function QuizGenerator() {
   const [quizFinished, setQuizFinished] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractStatus, setExtractStatus] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -386,12 +439,13 @@ export default function QuizGenerator() {
     if (!file) return;
     setError(null);
     setIsExtracting(true);
+    setExtractStatus("Cargando archivo...");
     setFileName(file.name);
     try {
-      const extracted = await extractTextFromFile(file);
+      const extracted = await extractTextFromFile(file, (msg) => setExtractStatus(msg));
       if (!extracted || extracted.length < 30) {
         throw new Error(
-          "No se pudo extraer suficiente texto del documento. Puede ser un PDF escaneado (imagen) sin texto seleccionable."
+          "No se pudo extraer suficiente texto del documento. El OCR tampoco encontró texto legible — verifica que el escaneo sea nítido."
         );
       }
       setText(extracted);
@@ -401,6 +455,7 @@ export default function QuizGenerator() {
       setFileName(null);
     } finally {
       setIsExtracting(false);
+      setExtractStatus("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -878,7 +933,17 @@ export default function QuizGenerator() {
               </div>
             </div>
 
-            {fileName && (
+            {isExtracting && extractStatus && (
+              <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-xs text-foreground">
+                <svg className="w-4 h-4 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <span>{extractStatus}</span>
+              </div>
+            )}
+
+            {fileName && !isExtracting && (
               <div className="mb-2 flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30 text-xs">
                 <span className="text-foreground truncate">
                   📄 <strong>{fileName}</strong> — texto cargado ({text.length.toLocaleString()} caracteres)
@@ -905,7 +970,7 @@ export default function QuizGenerator() {
               placeholder="Ingresa tus notas, un artículo, un capítulo, una palabra clave / tema (ej: 'Revolución Francesa')... o sube un documento PDF / Word (máx. 10 MB)."
             />
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              📎 Formatos soportados: <strong>PDF, DOCX, TXT, MD</strong> · Máximo <strong>10 MB</strong>. Los PDFs escaneados (solo imagen) no se pueden leer sin OCR.
+              📎 Formatos: <strong>PDF, DOCX, TXT, MD</strong> · Máx. <strong>10 MB</strong>. Los PDF con texto se leen al instante; los <strong>escaneados (solo imagen) activan OCR automático</strong> (puede tardar 1-3 min según el tamaño y descarga inicial del modelo ~10 MB).
             </p>
           </div>
 
