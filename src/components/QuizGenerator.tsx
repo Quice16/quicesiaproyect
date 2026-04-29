@@ -3,7 +3,43 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-async function extractTextFromPdf(file: File): Promise<string> {
+type ProgressFn = (msg: string) => void;
+
+async function ocrPagesWithTesseract(
+  pdf: any,
+  onProgress?: ProgressFn
+): Promise<string> {
+  const { createWorker } = await import("tesseract.js");
+  onProgress?.("Iniciando OCR (descargando modelo es+en, ~10-15 MB la primera vez)...");
+  const worker = await createWorker(["spa", "eng"]);
+  try {
+    let ocrText = "";
+    const maxPages = Math.min(pdf.numPages, 30); // tope de seguridad
+    for (let i = 1; i <= maxPages; i++) {
+      onProgress?.(`OCR página ${i} de ${maxPages}...`);
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2 }); // 2x para mejor precisión
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+      const { data } = await worker.recognize(canvas);
+      ocrText += (data.text || "") + "\n\n";
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+    return ocrText.trim();
+  } finally {
+    await worker.terminate();
+  }
+}
+
+async function extractTextFromPdf(
+  file: File,
+  onProgress?: ProgressFn
+): Promise<string> {
   // Carga perezosa de pdfjs solo cuando se necesita
   const pdfjs: any = await import("pdfjs-dist");
   const workerMod: any = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
@@ -11,6 +47,9 @@ async function extractTextFromPdf(file: File): Promise<string> {
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+
+  // 1) Intentar extracción de texto nativo (rápido, ideal para informes)
+  onProgress?.(`Leyendo texto del PDF (${pdf.numPages} páginas)...`);
   let fullText = "";
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -20,7 +59,17 @@ async function extractTextFromPdf(file: File): Promise<string> {
       .join(" ");
     fullText += pageText + "\n\n";
   }
-  return fullText.trim();
+  const trimmed = fullText.trim();
+
+  // 2) Si el texto nativo es muy escaso → es un PDF escaneado → OCR
+  // Heurística: menos de 50 caracteres por página en promedio
+  const avgPerPage = trimmed.length / pdf.numPages;
+  if (trimmed.length < 100 || avgPerPage < 50) {
+    onProgress?.("PDF parece escaneado (sin texto). Activando OCR...");
+    const ocr = await ocrPagesWithTesseract(pdf, onProgress);
+    if (ocr.length > trimmed.length) return ocr;
+  }
+  return trimmed;
 }
 
 async function extractTextFromDocx(file: File): Promise<string> {
