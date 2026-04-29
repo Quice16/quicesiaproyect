@@ -79,7 +79,10 @@ async function extractTextFromDocx(file: File): Promise<string> {
   return (result.value || "").trim();
 }
 
-async function extractTextFromFile(file: File): Promise<string> {
+async function extractTextFromFile(
+  file: File,
+  onProgress?: ProgressFn
+): Promise<string> {
   if (file.size > MAX_FILE_SIZE) {
     throw new Error(
       `El archivo supera los 10 MB (${(file.size / 1024 / 1024).toFixed(1)} MB). Sube uno más liviano.`
@@ -89,7 +92,7 @@ async function extractTextFromFile(file: File): Promise<string> {
   const type = file.type;
 
   if (type === "application/pdf" || name.endsWith(".pdf")) {
-    return extractTextFromPdf(file);
+    return extractTextFromPdf(file, onProgress);
   }
   if (
     type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
