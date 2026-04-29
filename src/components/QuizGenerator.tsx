@@ -5,10 +5,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 async function extractTextFromPdf(file: File): Promise<string> {
   // Carga perezosa de pdfjs solo cuando se necesita
-  const pdfjs = await import("pdfjs-dist");
-  // @ts-expect-error - worker como URL
-  const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  const pdfjs: any = await import("pdfjs-dist");
+  const workerMod: any = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
 
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: buffer }).promise;
@@ -17,8 +16,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
     const pageText = content.items
-      // @ts-expect-error - tipo TextItem
-      .map((it) => ("str" in it ? it.str : ""))
+      .map((it: any) => ("str" in it ? it.str : ""))
       .join(" ");
     fullText += pageText + "\n\n";
   }
@@ -26,7 +24,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
 }
 
 async function extractTextFromDocx(file: File): Promise<string> {
-  const mammoth = await import("mammoth/mammoth.browser");
+  const mammoth: any = await import("mammoth/mammoth.browser.js");
   const buffer = await file.arrayBuffer();
   const result = await mammoth.extractRawText({ arrayBuffer: buffer });
   return (result.value || "").trim();
