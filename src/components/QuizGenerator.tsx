@@ -874,7 +874,7 @@ export default function QuizGenerator() {
       </section>
 
       {/* Stats Panel */}
-      <aside className="space-y-6">
+      <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
         <div className="bg-card rounded-2xl p-6 lg:p-8 shadow-lg border border-border">
           <h3 className="text-xl font-bold text-primary mb-4 font-heading">
             Estado del Quiz
