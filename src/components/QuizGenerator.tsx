@@ -1101,7 +1101,7 @@ export default function QuizGenerator() {
                 className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm"
               >
                 <p className="font-semibold mb-1">Error al generar</p>
-                <p className="break-words">{error}</p>
+                <p className="break-words whitespace-pre-line leading-relaxed">{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
