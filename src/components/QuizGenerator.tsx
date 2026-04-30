@@ -289,7 +289,7 @@ async function callDeepSeek(apiKey: string, prompt: string): Promise<QuizQuestio
   });
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`DeepSeek ${response.status}: ${errText.slice(0, 200)}`);
+    throw humanizeApiError("DeepSeek", response.status, errText);
   }
   const data = await response.json();
   return extractJson(data.choices?.[0]?.message?.content ?? "").questions;
