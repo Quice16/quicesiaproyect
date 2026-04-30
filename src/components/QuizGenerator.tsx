@@ -235,7 +235,7 @@ async function callOpenAI(apiKey: string, prompt: string): Promise<QuizQuestion[
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`OpenAI ${response.status}: ${errText.slice(0, 200)}`);
+    throw humanizeApiError("OpenAI", response.status, errText);
   }
 
   const data = await response.json();
