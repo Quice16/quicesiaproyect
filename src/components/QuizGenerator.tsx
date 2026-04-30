@@ -332,7 +332,7 @@ async function callMistral(apiKey: string, prompt: string): Promise<QuizQuestion
   });
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Mistral ${response.status}: ${errText.slice(0, 200)}`);
+    throw humanizeApiError("Mistral", response.status, errText);
   }
   const data = await response.json();
   return extractJson(data.choices?.[0]?.message?.content ?? "").questions;
