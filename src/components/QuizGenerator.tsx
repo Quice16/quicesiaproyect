@@ -175,6 +175,46 @@ function extractJson(raw: string): { questions: QuizQuestion[] } {
   }
 }
 
+function humanizeApiError(providerLabel: string, status: number, rawBody: string): Error {
+  const lower = rawBody.toLowerCase();
+  const isQuota =
+    status === 429 ||
+    lower.includes("insufficient_quota") ||
+    lower.includes("quota") ||
+    lower.includes("billing") ||
+    lower.includes("rate limit") ||
+    lower.includes("resource_exhausted");
+
+  if (isQuota) {
+    return new Error(
+      `Tu API key de ${providerLabel} no tiene cuota disponible o pertenece a un plan gratuito agotado.\n\n` +
+        `Para que funcione necesitas una cuenta con créditos pagos (saldo activo y método de pago configurado en ${providerLabel}). ` +
+        `Las API keys gratuitas o de prueba normalmente no tienen suficiente cuota para generar quizzes.\n\n` +
+        `Alternativa: usa el modo "Sin IA (local)" del selector — genera preguntas a partir del texto sin necesidad de API key.`
+    );
+  }
+
+  if (status === 401 || status === 403) {
+    return new Error(
+      `La API key de ${providerLabel} no es válida o no tiene permisos. Verifica que la copiaste completa y que esté activa en tu cuenta.`
+    );
+  }
+
+  if (status === 400) {
+    return new Error(
+      `${providerLabel} rechazó la solicitud (400). Revisa el texto que pegaste o intenta con menos contenido.`
+    );
+  }
+
+  if (status >= 500) {
+    return new Error(
+      `${providerLabel} está teniendo problemas en sus servidores (${status}). Intenta de nuevo en unos minutos o usa el modo "Sin IA (local)".`
+    );
+  }
+
+  return new Error(`${providerLabel} respondió con error ${status}. Detalle: ${rawBody.slice(0, 160)}`);
+}
+
 async function callOpenAI(apiKey: string, prompt: string): Promise<QuizQuestion[]> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
