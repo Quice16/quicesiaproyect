@@ -307,7 +307,7 @@ async function callGemini(apiKey: string, prompt: string): Promise<QuizQuestion[
   });
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Gemini ${response.status}: ${errText.slice(0, 200)}`);
+    throw humanizeApiError("Google Gemini", response.status, errText);
   }
   const data = await response.json();
   return extractJson(data.candidates?.[0]?.content?.parts?.[0]?.text ?? "").questions;
