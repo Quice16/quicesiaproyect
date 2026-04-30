@@ -262,7 +262,7 @@ async function callAnthropic(apiKey: string, prompt: string): Promise<QuizQuesti
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Claude ${response.status}: ${errText.slice(0, 200)}`);
+    throw humanizeApiError("Anthropic Claude", response.status, errText);
   }
 
   const data = await response.json();
