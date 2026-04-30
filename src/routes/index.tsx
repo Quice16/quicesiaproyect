@@ -1,3 +1,4 @@
+// Sync check: commit para verificar integración con GitHub
 import { createFileRoute } from "@tanstack/react-router";
 import QuizGenerator from "../components/QuizGenerator";
 
