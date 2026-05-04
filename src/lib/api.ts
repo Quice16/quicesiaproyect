@@ -3,8 +3,13 @@
  * Lee la base URL de VITE_API_URL (definida por el deploy de Vercel o .env local).
  */
 
+// Fallback al backend en Railway si VITE_API_URL no está definida en el deploy.
+// Cambia esta constante si reapuntas el backend a otra URL.
+const DEFAULT_API_URL = "https://backend-production-f96d.up.railway.app";
+
 const RAW_API_URL =
-  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "";
+  (import.meta.env.VITE_API_URL as string | undefined)?.trim() ||
+  DEFAULT_API_URL;
 
 // Quitamos slashes finales para concatenar limpio.
 const API_URL = RAW_API_URL.replace(/\/+$/, "");
