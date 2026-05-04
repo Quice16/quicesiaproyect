@@ -1,19 +1,8 @@
-// Sync check: commit para verificar integración con GitHub
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import QuizGenerator from "../components/QuizGenerator";
 
 export const Route = createFileRoute("/")({
   component: Index,
-  head: () => ({
-    meta: [
-      { title: "QuizUQGenerator — Generador de Quizzes UQ" },
-      {
-        name: "description",
-        content:
-          "Generador de quizzes con IA para fines académicos — Universidad del Quindío.",
-      },
-    ],
-  }),
 });
 
 const STARS = [
@@ -130,6 +119,20 @@ function Index() {
               </p>
             </div>
           </div>
+          <nav className="flex items-center gap-2">
+            <Link
+              to="/docentes"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+            >
+              Docentes
+            </Link>
+            <Link
+              to="/docentes/nuevo"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+            >
+              Crear perfil de docente
+            </Link>
+          </nav>
         </header>
 
         {/* Main Content */}

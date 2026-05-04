@@ -1,0 +1,25 @@
+// Esquema Prisma — QuizUQGenerator backend
+// Provider: PostgreSQL (Railway lo provee como add-on)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Teacher {
+  id        String   @id @default(cuid())
+  nombre    String
+  email     String   @unique
+  programa  String?
+  materia   String?
+  bio       String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("teachers")
+}
