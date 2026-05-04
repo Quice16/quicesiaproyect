@@ -13,7 +13,7 @@ export const Route = createFileRoute("/quizzes/nuevo")({
 
 // ============= Tipos y storage =============
 
-type Provider = "local" | "openai" | "anthropic" | "gemini";
+type Provider = "local" | "openai" | "anthropic" | "deepseek" | "gemini";
 const KEY_STORE = "quiz_ai_config_v1";
 
 const providerInfo: Record<
@@ -37,6 +37,12 @@ const providerInfo: Record<
     placeholder: "sk-ant-...",
     needsKey: true,
     url: "https://console.anthropic.com/settings/keys",
+  },
+  deepseek: {
+    name: "DeepSeek · deepseek-chat",
+    placeholder: "sk-...",
+    needsKey: true,
+    url: "https://platform.deepseek.com/api_keys",
   },
   gemini: {
     name: "Google · Gemini 2.0 Flash",
@@ -119,6 +125,28 @@ async function callAnthropic(key: string, prompt: string) {
   if (!r.ok) throw new Error(`Claude ${r.status}: ${await r.text()}`);
   const d = await r.json();
   return extractJson(d.content?.[0]?.text ?? "").questions;
+}
+
+async function callDeepSeek(key: string, prompt: string) {
+  const r = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        { role: "system", content: "Devuelve solo JSON válido." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!r.ok) throw new Error(`DeepSeek ${r.status}: ${await r.text()}`);
+  const d = await r.json();
+  return extractJson(d.choices?.[0]?.message?.content ?? "").questions;
 }
 
 async function callGemini(key: string, prompt: string) {
@@ -295,6 +323,7 @@ function NuevoQuizPage() {
       if (provider === "local") qs = generateLocal(text, difficulty, numQuestions);
       else if (provider === "openai") qs = await callOpenAI(k, prompt);
       else if (provider === "anthropic") qs = await callAnthropic(k, prompt);
+      else if (provider === "deepseek") qs = await callDeepSeek(k, prompt);
       else qs = await callGemini(k, prompt);
 
       if (!Array.isArray(qs) || qs.length === 0)
