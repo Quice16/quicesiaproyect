@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import QuizGenerator from "../components/QuizGenerator";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -24,6 +25,7 @@ const STARS = [
 ];
 
 function Index() {
+  const { teacher } = useAuth();
   return (
     <div className="relative min-h-screen bg-background antialiased overflow-hidden">
       {/* Fondo astro/educativo: gradiente + nebulosas + grilla + estrellas */}
@@ -120,18 +122,34 @@ function Index() {
             </div>
           </div>
           <nav className="flex items-center gap-2">
-            <Link
-              to="/docentes"
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
-            >
-              Docentes
-            </Link>
-            <Link
-              to="/docentes/nuevo"
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-            >
-              Crear perfil de docente
-            </Link>
+            {teacher ? (
+              <>
+                <span className="hidden sm:inline text-sm text-muted-foreground">
+                  Hola, <strong className="text-foreground">{teacher.nombre}</strong>
+                </span>
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                >
+                  Mis quizzes
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  to="/registro"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                >
+                  Soy docente
+                </Link>
+              </>
+            )}
           </nav>
         </header>
 

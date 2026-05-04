@@ -9,58 +9,128 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RegistroRouteImport } from './routes/registro'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DocentesIndexRouteImport } from './routes/docentes/index'
-import { Route as DocentesNuevoRouteImport } from './routes/docentes/nuevo'
+import { Route as QuizzesNuevoRouteImport } from './routes/quizzes/nuevo'
+import { Route as QSlugRouteImport } from './routes/q/$slug'
 
+const RegistroRoute = RegistroRouteImport.update({
+  id: '/registro',
+  path: '/registro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocentesIndexRoute = DocentesIndexRouteImport.update({
-  id: '/docentes/',
-  path: '/docentes/',
+const QuizzesNuevoRoute = QuizzesNuevoRouteImport.update({
+  id: '/quizzes/nuevo',
+  path: '/quizzes/nuevo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DocentesNuevoRoute = DocentesNuevoRouteImport.update({
-  id: '/docentes/nuevo',
-  path: '/docentes/nuevo',
+const QSlugRoute = QSlugRouteImport.update({
+  id: '/q/$slug',
+  path: '/q/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/docentes/nuevo': typeof DocentesNuevoRoute
-  '/docentes/': typeof DocentesIndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/registro': typeof RegistroRoute
+  '/q/$slug': typeof QSlugRoute
+  '/quizzes/nuevo': typeof QuizzesNuevoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/docentes/nuevo': typeof DocentesNuevoRoute
-  '/docentes': typeof DocentesIndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/registro': typeof RegistroRoute
+  '/q/$slug': typeof QSlugRoute
+  '/quizzes/nuevo': typeof QuizzesNuevoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/docentes/nuevo': typeof DocentesNuevoRoute
-  '/docentes/': typeof DocentesIndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/registro': typeof RegistroRoute
+  '/q/$slug': typeof QSlugRoute
+  '/quizzes/nuevo': typeof QuizzesNuevoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/docentes/nuevo' | '/docentes/'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/registro'
+    | '/q/$slug'
+    | '/quizzes/nuevo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/docentes/nuevo' | '/docentes'
-  id: '__root__' | '/' | '/docentes/nuevo' | '/docentes/'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/registro'
+    | '/q/$slug'
+    | '/quizzes/nuevo'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/registro'
+    | '/q/$slug'
+    | '/quizzes/nuevo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DocentesNuevoRoute: typeof DocentesNuevoRoute
-  DocentesIndexRoute: typeof DocentesIndexRoute
+  DashboardRoute: typeof DashboardRoute
+  LoginRoute: typeof LoginRoute
+  RegistroRoute: typeof RegistroRoute
+  QSlugRoute: typeof QSlugRoute
+  QuizzesNuevoRoute: typeof QuizzesNuevoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/registro': {
+      id: '/registro'
+      path: '/registro'
+      fullPath: '/registro'
+      preLoaderRoute: typeof RegistroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -68,18 +138,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docentes/': {
-      id: '/docentes/'
-      path: '/docentes'
-      fullPath: '/docentes/'
-      preLoaderRoute: typeof DocentesIndexRouteImport
+    '/quizzes/nuevo': {
+      id: '/quizzes/nuevo'
+      path: '/quizzes/nuevo'
+      fullPath: '/quizzes/nuevo'
+      preLoaderRoute: typeof QuizzesNuevoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/docentes/nuevo': {
-      id: '/docentes/nuevo'
-      path: '/docentes/nuevo'
-      fullPath: '/docentes/nuevo'
-      preLoaderRoute: typeof DocentesNuevoRouteImport
+    '/q/$slug': {
+      id: '/q/$slug'
+      path: '/q/$slug'
+      fullPath: '/q/$slug'
+      preLoaderRoute: typeof QSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -87,8 +157,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DocentesNuevoRoute: DocentesNuevoRoute,
-  DocentesIndexRoute: DocentesIndexRoute,
+  DashboardRoute: DashboardRoute,
+  LoginRoute: LoginRoute,
+  RegistroRoute: RegistroRoute,
+  QSlugRoute: QSlugRoute,
+  QuizzesNuevoRoute: QuizzesNuevoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

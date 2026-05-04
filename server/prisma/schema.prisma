@@ -1,5 +1,4 @@
 // Esquema Prisma — QuizUQGenerator backend
-// Provider: PostgreSQL (Railway lo provee como add-on)
 
 generator client {
   provider = "prisma-client-js"
@@ -11,15 +10,35 @@ datasource db {
 }
 
 model Teacher {
-  id        String   @id @default(cuid())
-  nombre    String
-  email     String   @unique
-  programa  String?
-  materia   String?
-  bio       String?
-  avatarUrl String?  @map("avatar_url")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  programa     String?
+  materia      String?
+  bio          String?
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  quizzes      Quiz[]
 
   @@map("teachers")
+}
+
+model Quiz {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  title      String
+  difficulty String   @default("medium")
+  questions  Json
+  expiresAt  DateTime @map("expires_at")
+  teacherId  String   @map("teacher_id")
+  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([teacherId])
+  @@index([expiresAt])
+  @@map("quizzes")
 }

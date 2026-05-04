@@ -40,15 +40,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const url = `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
+  // Lazy import para evitar ciclo lib/api ← lib/auth ← lib/api.
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem("quicesia_jwt_v1");
+  } catch {
+    /* noop */
+  }
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+  if (token && !headers.Authorization) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   let response: Response;
   try {
     response = await fetch(url, {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        ...(init?.headers ?? {}),
-      },
+      headers,
     });
   } catch (err) {
     throw new ApiError(

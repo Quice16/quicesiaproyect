@@ -2,18 +2,16 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { teachersRoutes } from "./routes/teachers.js";
+import { authRoutes } from "./routes/auth.js";
+import {
+  publicQuizzesRoutes,
+  quizzesRoutes,
+} from "./routes/quizzes.js";
 
 const app = new Hono();
 
-// Logger HTTP
 app.use("*", logger());
 
-/**
- * CORS — permite el dominio de Vercel + localhost.
- * Puedes pasar varios separados por coma en CORS_ORIGINS,
- * o '*' para permitir cualquier origen (no recomendado en prod con cookies).
- */
 const corsOriginsRaw = process.env.CORS_ORIGINS ?? "*";
 const allowedOrigins = corsOriginsRaw
   .split(",")
@@ -40,13 +38,19 @@ app.get("/", (c) =>
   c.json({
     name: "quicesiaproyect-api",
     status: "ok",
-    docs: "/api/teachers",
+    docs: {
+      auth: "/api/auth/{register,login,me}",
+      quizzes: "/api/quizzes",
+      publicQuizzes: "/api/public/quizzes/:slug",
+    },
   })
 );
 app.get("/health", (c) => c.json({ status: "ok" }));
 
 // API
-app.route("/api/teachers", teachersRoutes);
+app.route("/api/auth", authRoutes);
+app.route("/api/quizzes", quizzesRoutes);
+app.route("/api/public/quizzes", publicQuizzesRoutes);
 
 // 404 fallback
 app.notFound((c) => c.json({ error: "Not found" }, 404));
