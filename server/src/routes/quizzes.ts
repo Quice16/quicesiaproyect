@@ -115,13 +115,44 @@ quizzesRoutes.post("/", async (c) => {
 quizzesRoutes.get("/:id", async (c) => {
   const teacher = c.get("teacher" as never) as { id: string };
   const id = c.req.param("id");
-  const quiz = await prisma.quiz.findUnique({ where: { id } });
+  const quiz = await prisma.quiz.findUnique({
+    where: { id },
+    include: { _count: { select: { attempts: true } } },
+  });
   if (!quiz || quiz.teacherId !== teacher.id) {
     return c.json({ error: "Quiz no encontrado" }, 404);
   }
   return c.json({
-    data: { ...quiz, expired: isExpired(quiz.expiresAt) },
+    data: {
+      ...quiz,
+      expired: isExpired(quiz.expiresAt),
+      numAttempts: quiz._count.attempts,
+    },
   });
+});
+
+/**
+ * GET /api/quizzes/:id/attempts — lista de estudiantes que respondieron.
+ */
+quizzesRoutes.get("/:id/attempts", async (c) => {
+  const teacher = c.get("teacher" as never) as { id: string };
+  const id = c.req.param("id");
+  const quiz = await prisma.quiz.findUnique({ where: { id } });
+  if (!quiz || quiz.teacherId !== teacher.id) {
+    return c.json({ error: "Quiz no encontrado" }, 404);
+  }
+  const attempts = await prisma.quizAttempt.findMany({
+    where: { quizId: id },
+    orderBy: { completedAt: "desc" },
+    select: {
+      id: true,
+      studentName: true,
+      correct: true,
+      total: true,
+      completedAt: true,
+    },
+  });
+  return c.json({ data: attempts });
 });
 
 quizzesRoutes.delete("/:id", async (c) => {
@@ -217,6 +248,22 @@ publicQuizzesRoutes.post("/:slug/submit", async (c) => {
       explanation: q.explanation,
     };
   });
+
+  // Persistir intento para que el docente vea quién respondió
+  try {
+    await prisma.quizAttempt.create({
+      data: {
+        quizId: quiz.id,
+        studentName: parsed.data.studentName ?? null,
+        answers: parsed.data.answers as unknown as Prisma.InputJsonValue,
+        correct,
+        total: questions.length,
+      },
+    });
+  } catch (err) {
+    // No fallar el submit si falla la persistencia del intento.
+    console.error("[POST /public/:slug/submit] no se persistió attempt:", err);
+  }
 
   return c.json({
     data: {

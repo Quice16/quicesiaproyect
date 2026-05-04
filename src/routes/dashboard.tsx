@@ -197,23 +197,32 @@ function DashboardPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 flex justify-end gap-2">
-                  <a
-                    href={studentUrl(q.slug)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <Link
+                    to="/quizzes/$id"
+                    params={{ id: q.id }}
+                    className="text-xs font-semibold text-primary hover:underline"
                   >
-                    Vista previa →
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(q)}
-                    disabled={deletingId === q.id}
-                    className="text-xs font-semibold text-destructive hover:underline disabled:opacity-50"
-                  >
-                    {deletingId === q.id ? "..." : "Eliminar"}
-                  </button>
+                    Ver detalle y respuestas →
+                  </Link>
+                  <div className="flex gap-3">
+                    <a
+                      href={studentUrl(q.slug)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    >
+                      Vista previa
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(q)}
+                      disabled={deletingId === q.id}
+                      className="text-xs font-semibold text-destructive hover:underline disabled:opacity-50"
+                    >
+                      {deletingId === q.id ? "..." : "Eliminar"}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ))}

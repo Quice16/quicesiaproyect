@@ -27,6 +27,15 @@ export interface QuizSummary {
 
 export interface Quiz extends QuizSummary {
   questions: QuizQuestion[];
+  numAttempts?: number;
+}
+
+export interface QuizAttempt {
+  id: string;
+  studentName: string | null;
+  correct: number;
+  total: number;
+  completedAt: string;
 }
 
 export interface PublicQuestion {
@@ -96,6 +105,12 @@ export async function deleteQuiz(id: string) {
 
 export async function getMyQuiz(id: string) {
   return (await api.get<{ data: Quiz }>(`/api/quizzes/${id}`)).data;
+}
+
+export async function listAttempts(id: string) {
+  return (
+    await api.get<{ data: QuizAttempt[] }>(`/api/quizzes/${id}/attempts`)
+  ).data;
 }
 
 export async function getPublicQuiz(slug: string) {

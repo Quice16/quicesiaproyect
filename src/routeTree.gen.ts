@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QuizzesNuevoRouteImport } from './routes/quizzes/nuevo'
+import { Route as QuizzesIdRouteImport } from './routes/quizzes/$id'
 import { Route as QSlugRouteImport } from './routes/q/$slug'
 
 const RegistroRoute = RegistroRouteImport.update({
@@ -41,6 +42,11 @@ const QuizzesNuevoRoute = QuizzesNuevoRouteImport.update({
   path: '/quizzes/nuevo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizzesIdRoute = QuizzesIdRouteImport.update({
+  id: '/quizzes/$id',
+  path: '/quizzes/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const QSlugRoute = QSlugRouteImport.update({
   id: '/q/$slug',
   path: '/q/$slug',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/registro': typeof RegistroRoute
   '/q/$slug': typeof QSlugRoute
+  '/quizzes/$id': typeof QuizzesIdRoute
   '/quizzes/nuevo': typeof QuizzesNuevoRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/registro': typeof RegistroRoute
   '/q/$slug': typeof QSlugRoute
+  '/quizzes/$id': typeof QuizzesIdRoute
   '/quizzes/nuevo': typeof QuizzesNuevoRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/registro': typeof RegistroRoute
   '/q/$slug': typeof QSlugRoute
+  '/quizzes/$id': typeof QuizzesIdRoute
   '/quizzes/nuevo': typeof QuizzesNuevoRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/registro'
     | '/q/$slug'
+    | '/quizzes/$id'
     | '/quizzes/nuevo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/registro'
     | '/q/$slug'
+    | '/quizzes/$id'
     | '/quizzes/nuevo'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/registro'
     | '/q/$slug'
+    | '/quizzes/$id'
     | '/quizzes/nuevo'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegistroRoute: typeof RegistroRoute
   QSlugRoute: typeof QSlugRoute
+  QuizzesIdRoute: typeof QuizzesIdRoute
   QuizzesNuevoRoute: typeof QuizzesNuevoRoute
 }
 
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuizzesNuevoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quizzes/$id': {
+      id: '/quizzes/$id'
+      path: '/quizzes/$id'
+      fullPath: '/quizzes/$id'
+      preLoaderRoute: typeof QuizzesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/q/$slug': {
       id: '/q/$slug'
       path: '/q/$slug'
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegistroRoute: RegistroRoute,
   QSlugRoute: QSlugRoute,
+  QuizzesIdRoute: QuizzesIdRoute,
   QuizzesNuevoRoute: QuizzesNuevoRoute,
 }
 export const routeTree = rootRouteImport

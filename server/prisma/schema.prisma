@@ -27,18 +27,34 @@ model Teacher {
 }
 
 model Quiz {
-  id         String   @id @default(cuid())
-  slug       String   @unique
+  id         String        @id @default(cuid())
+  slug       String        @unique
   title      String
-  difficulty String   @default("medium")
+  difficulty String        @default("medium")
   questions  Json
-  expiresAt  DateTime @map("expires_at")
-  teacherId  String   @map("teacher_id")
-  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  expiresAt  DateTime      @map("expires_at")
+  teacherId  String        @map("teacher_id")
+  teacher    Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  attempts   QuizAttempt[]
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
 
   @@index([teacherId])
   @@index([expiresAt])
   @@map("quizzes")
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String   @map("quiz_id")
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentName String?  @map("student_name")
+  answers     Json
+  correct     Int
+  total       Int
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  @@index([quizId])
+  @@index([completedAt])
+  @@map("quiz_attempts")
 }
