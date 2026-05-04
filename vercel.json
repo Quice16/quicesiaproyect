@@ -6,8 +6,24 @@
   "installCommand": "npm install",
   "rewrites": [
     {
-      "source": "/((?!assets/|favicon\\.ico|robots\\.txt).*)",
+      "source": "/((?!assets/|sw\\.js|workbox-.*|registerSW\\.js|manifest\\.webmanifest|favicon\\.ico|favicon\\.svg|robots\\.txt|.*\\.png).*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
     }
   ]
 }

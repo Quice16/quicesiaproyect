@@ -97,14 +97,6 @@ function Index() {
         `}</style>
       </div>
 
-      {/* Marca de agua discreta en esquina */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed bottom-3 right-4 z-10 text-[10px] text-muted-foreground/70 font-medium tracking-wide select-none hidden sm:block"
-      >
-        UQ · Para fines Académicos
-      </div>
-
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16">
         {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 lg:mb-14 gap-4">
